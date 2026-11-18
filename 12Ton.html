@@ -563,7 +563,9 @@
 
 
   function updatePhysics() {
-    if (b.trapped && state.currentHole) {
+    if (state.phase !== "roll") return;
+    const t = getEffectiveTilt();
+    const b = state.ball;    if (b.trapped && state.currentHole) {
       const mag = Math.hypot(t.x, t.y);
       if (mag > 0.72) {
         b.trapped = false;
