@@ -282,7 +282,7 @@
     holes: [],
     ball: { x: 350, y: 350, vx: 0, vy: 0, r: 15, trapped: false },
     tilt: { x: 0, y: 0, mouseDown: false },
-    deviceTilt: { x: 0, y: 0, active: false },
+    deviceTilt: { x: 0, y: 0, rawX: 0, rawY: 0, offsetX: 0, offsetY: 0, active: false },
     keys: {}
   };
   let audioCtx = null;
@@ -378,8 +378,12 @@
     window.addEventListener("deviceorientation", (e) => {
       if (e.gamma === null || e.beta === null) return;
       state.deviceTilt.active = true;
-      state.deviceTilt.x = Math.max(-35, Math.min(35, e.gamma)) / 35;
-      state.deviceTilt.y = Math.max(-35, Math.min(35, e.beta - 35)) / 35;
+      state.deviceTilt.rawX = e.gamma;
+      state.deviceTilt.rawY = e.beta;
+      const dx = Math.max(-45, Math.min(45, e.gamma - state.deviceTilt.offsetX)) / 45;
+      const dy = Math.max(-45, Math.min(45, e.beta - state.deviceTilt.offsetY)) / 45;
+      state.deviceTilt.x = Math.abs(dx) < 0.12 ? 0 : dx;
+      state.deviceTilt.y = Math.abs(dy) < 0.12 ? 0 : dy;
     });
   }
   function updatePointerTilt(clientX, clientY) {
@@ -559,26 +563,27 @@
 
 
   function updatePhysics() {
-    if (state.phase !== "roll") return;
-    const t = getEffectiveTilt();
-    const b = state.ball;
-
     if (b.trapped && state.currentHole) {
       const mag = Math.hypot(t.x, t.y);
-      if (mag > 0.85) {
+      if (mag > 0.72) {
         b.trapped = false;
-        b.vx = t.x * 4.4;
-        b.vy = t.y * 4.4;
-        b.x += t.x * 17;
-        b.y += t.y * 17;
+        b.vx = t.x * 3.1;
+        b.vy = t.y * 3.1;
+        b.x += t.x * 16;
+        b.y += t.y * 16;
         state.currentHole = null;
         el("buzzerBtn").disabled = true;
         el("infoBanner").textContent = "Befreit! Suche weiter oder drücke „Zurück zur Mitte“.";
       }
       return;
     }
-    b.vx = (b.vx + t.x * 0.25) * 0.975;
-    b.vy = (b.vy + t.y * 0.25) * 0.975;
+    b.vx = (b.vx + t.x * 0.11) * 0.962;
+    b.vy = (b.vy + t.y * 0.11) * 0.962;
+    const speed = Math.hypot(b.vx, b.vy);
+    if (speed > 4.2) {
+      b.vx = (b.vx / speed) * 4.2;
+      b.vy = (b.vy / speed) * 4.2;
+    }
     b.x += b.vx;
     b.y += b.vy;
 
@@ -699,7 +704,11 @@ function drawBoard() {
   });
 
 
-bindSafeTap(el("releaseBtn"), () => {
+  bindSafeTap(el("releaseBtn"), () => {
+    state.deviceTilt.offsetX = state.deviceTilt.rawX;
+    state.deviceTilt.offsetY = state.deviceTilt.rawY;
+    state.deviceTilt.x = 0;
+    state.deviceTilt.y = 0;
     state.phase = "roll";
     el("releaseBtn").disabled = true;
     el("playTargetBtn").disabled = false;
