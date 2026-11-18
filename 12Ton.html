@@ -364,18 +364,16 @@
   el("playerCount").addEventListener("change", renderPlayerInputs);
   renderPlayerInputs();
 
-  async function requestMotionPermission() {
+   function requestMotionPermission() {
     if (typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function") {
-      try {
-        const res = await DeviceOrientationEvent.requestPermission();
-        if (res === "granted") enableDeviceOrientation();
-      } catch (e) {}
+      DeviceOrientationEvent.requestPermission()
+        .then((res) => { if (res === "granted") enableDeviceOrientation(); })
+        .catch(() => {});
     } else {
       enableDeviceOrientation();
     }
   }
-
   function enableDeviceOrientation() {
     window.addEventListener("deviceorientation", (e) => {
       if (e.gamma === null || e.beta === null) return;
@@ -384,23 +382,37 @@
       state.deviceTilt.y = Math.max(-35, Math.min(35, e.beta - 35)) / 35;
     });
   }
- 
-  function updateMouseTilt(e) {
+  function updatePointerTilt(clientX, clientY) {
     if (state.deviceTilt.active || !state.tilt.mouseDown) return;
     const rect = canvas.getBoundingClientRect();
-    const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+    const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = ((clientY - rect.top) / rect.height) * 2 - 1;
     state.tilt.x = Math.max(-1, Math.min(1, nx));
     state.tilt.y = Math.max(-1, Math.min(1, ny));
   }
   canvas.addEventListener("mousedown", (e) => {
     e.preventDefault();
     state.tilt.mouseDown = true;
-    updateMouseTilt(e);
+    updatePointerTilt(e.clientX, e.clientY);
   });
-
-  window.addEventListener("mousemove", updateMouseTilt);
+  window.addEventListener("mousemove", (e) => updatePointerTilt(e.clientX, e.clientY));
   window.addEventListener("mouseup", () => {
+    state.tilt.mouseDown = false;
+    state.tilt.x = 0;
+    state.tilt.y = 0;
+  });
+  canvas.addEventListener("touchstart", (e) => {
+    if (state.deviceTilt.active) return;
+    state.tilt.mouseDown = true;
+    const t = e.touches.item(0);
+    if (t) updatePointerTilt(t.clientX, t.clientY);
+  }, { passive: true });
+  canvas.addEventListener("touchmove", (e) => {
+    if (state.deviceTilt.active || !state.tilt.mouseDown) return;
+    const t = e.touches.item(0);
+    if (t) updatePointerTilt(t.clientX, t.clientY);
+  }, { passive: true });
+  canvas.addEventListener("touchend", () => {
     state.tilt.mouseDown = false;
     state.tilt.x = 0;
     state.tilt.y = 0;
@@ -472,8 +484,8 @@
   }
 
   function startGame() {
+    requestMotionPermission();    
     initAudio();
-    requestMotionPermission();
     buildHoles();
     const inputs = Array.from(el("playerInputs").querySelectorAll("input"));
     state.players = inputs.map((inp, idx) => ({
