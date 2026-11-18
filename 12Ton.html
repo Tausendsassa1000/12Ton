@@ -1,0 +1,728 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>12-TON – Das chromatische Kugel-Gehörspiel</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-light: #334155;
+    --gold: #fbbf24;
+    --cyan: #38bdf8;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --danger: #ef4444;
+    --success: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    overflow-x: hidden;
+    touch-action: pan-y;
+  }
+  .container {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+  }
+  h1 {
+    font-size: 1.7rem;
+    color: var(--gold);
+    text-align: center;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 600px) {
+    .grid-2 { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .card { padding: 12px; }
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--cyan);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  select, input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--card-light);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .btn {
+    padding: 12px 16px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    text-align: center;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-gold { background: var(--gold); color: #0f172a; }
+  .btn-cyan { background: var(--cyan); color: #0f172a; }
+  .btn-success { background: var(--success); color: #0f172a; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-amber { background: #fb923c; color: #0f172a; }
+  .btn-ghost {
+    background: var(--card-light);
+    color: var(--text);
+  }
+
+
+  .btn-ghost {
+    background: var(--card-light);
+    color: var(--text);
+  }
+  .board-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    touch-action: none;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.6);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg);
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .badge {
+    background: var(--card-light);
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-weight: 700;
+    color: var(--gold);
+  }
+  .hidden { display: none !important; }
+  .score-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .score-item {
+    background: var(--bg);
+    padding: 8px 12px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    border: 2px solid transparent;
+  }
+  .score-item.active { border-color: var(--gold); }
+  .hint-box {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid var(--cyan);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: #e0f2fe;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>12-TON</h1>
+    <div class="subtitle">Chromatisches Kugel- & Gehörspiel nach der Zwölfton-Grundreihe</div>
+  </div>
+
+  <div id="menuScreen" class="card" style="display:flex; flex-direction:column; gap:12px;">
+    <div class="grid-2">
+      <div>
+        <label for="playerCount">Spieleranzahl (1–8)</label>
+        <select id="playerCount">
+          <option value="1">1 Spieler (Solo)</option>
+          <option value="2" selected>2 Spieler</option>
+          <option value="3">3 Spieler</option>
+          <option value="4">4 Spieler</option>
+          <option value="5">5 Spieler</option>
+          <option value="6">6 Spieler</option>
+          <option value="7">7 Spieler</option>
+          <option value="8">8 Spieler</option>
+        </select>
+      </div>
+      <div>
+        <label for="roundCount">Rundenanzahl</label>
+        <select id="roundCount">
+          <option value="3">3 Runden</option>
+          <option value="5" selected>5 Runden</option>
+          <option value="7">7 Runden</option>
+          <option value="12">12 Runden (Komplette Reihe)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="playerInputs" class="grid-2"></div>
+
+    <div class="hint-box">
+      <strong>So geht's:</strong> Höre den Zielton so lange du möchtest. Starte dann die Kugel: Kippe dein Handy/Tablet (oder nutze Maus / Pfeiltasten am PC). Innen liegen tiefe, außen hohe Oktaven. Fällt die Kugel in ein Loch, hörst du dessen Ton. Drücke den <strong>Buzzer</strong>, wenn er passt – oder befreie die Kugel per Ruck bzw. per Mitte-Button (max. 12 Versuche, Rand-Aus = 12 Punkte). Wer die <strong>wenigsten Punkte</strong> hat, gewinnt!
+    </div>
+
+    <button id="startBtn" class="btn btn-gold" style="font-size:1.1rem;">Spiel starten & Ton aktivieren</button>
+
+    <div style="text-align:center; font-size:0.75rem; color:var(--muted);">
+      Klangerzeugung: Web Audio API (Echtzeit-Synthese) • Zwölftonreihe nach Arnold Schönberg • ka-2.art
+    </div>
+  </div>
+  <div id="gameScreen" class="card hidden" style="display:flex; flex-direction:column; gap:10px;">
+    <div class="status-bar">
+      <span id="turnLabel" style="font-weight:700; color:var(--cyan);">Spieler 1</span>
+      <span id="roundLabel" class="badge">Runde 1 / 5</span>
+      <span id="attemptLabel" class="badge">Versuche: 0 / 12</span>
+    </div>
+
+    <div id="infoBanner" class="hint-box" style="text-align:center; font-weight:600;">
+      Höre den Zielton an und drücke „Kugel freigeben“!
+    </div>
+
+    <div class="board-wrap">
+      <canvas id="boardCanvas" width="700" height="700"></canvas>
+    </div>
+
+    <div class="grid-2">
+      <button id="playTargetBtn" class="btn btn-cyan">🔊 Zielton anhören</button>
+      <button id="releaseBtn" class="btn btn-gold">🎱 Kugel freigeben</button>
+      <button id="centerBtn" class="btn btn-amber" disabled>↺ Zurück zur Mitte</button>
+      <button id="buzzerBtn" class="btn btn-success" disabled>🔔 BUZZER (Passt!)</button>
+    </div>
+
+    <button id="nextTurnBtn" class="btn btn-gold hidden">Nächster Zug ➔</button>
+
+    <div id="liveScores" class="score-list"></div>
+  </div>
+
+  <div id="endScreen" class="card hidden" style="display:flex; flex-direction:column; gap:12px;">
+    <h2 style="color:var(--gold); text-align:center;">🏆 Endergebnis</h2>
+    <div id="finalScores" class="score-list"></div>
+    <button id="restartBtn" class="btn btn-gold">Neues Spiel im Menü</button>
+  </div>
+</div>
+<script>
+(() => {
+  const el = (id) => document.getElementById(id);
+  const canvas = el("boardCanvas");
+  const ctx = canvas.getContext("2d");
+
+  const ROW_NOTES = new Array(
+    { name: "C",   midi: 48, colors: new Array("#b2ebf2", "#4dd0e1", "#00acc1", "#00838f") },
+    { name: "Cis", midi: 49, colors: new Array("#bbdefb", "#64b5f6", "#1e88e5", "#1565c0") },
+    { name: "E",   midi: 52, colors: new Array("#c5cae9", "#7986cb", "#3949ab", "#283593") },
+    { name: "Es",  midi: 51, colors: new Array("#d1c4e9", "#9575cd", "#5e35b1", "#4527a0") },
+    { name: "G",   midi: 55, colors: new Array("#e1bee7", "#ba68c8", "#8e24aa", "#6a1b9a") },
+    { name: "Fis", midi: 54, colors: new Array("#f8bbd0", "#f06292", "#d81b60", "#ad1457") },
+    { name: "F",   midi: 53, colors: new Array("#ffcdd2", "#e57373", "#e53935", "#c62828") },
+    { name: "A",   midi: 57, colors: new Array("#ffe0b2", "#ffb74d", "#fb8c00", "#ef6c00") },
+    { name: "As",  midi: 56, colors: new Array("#fff9c4", "#fff176", "#fdd835", "#f9a825") },
+    { name: "H",   midi: 59, colors: new Array("#dcedc8", "#aed581", "#7cb342", "#558b2f") },
+    { name: "B",   midi: 58, colors: new Array("#c8e6c9", "#81c784", "#43a047", "#2e7d32") },
+    { name: "D",   midi: 50, colors: new Array("#b2dfdb", "#4db6ac", "#00897b", "#00695c") }
+  );
+
+  const state = {
+    players: [],
+    totalRounds: 5,
+    round: 1,
+    turnIdx: 0,
+    suddenDeath: false,
+    phase: "listen",
+    targetHole: null,
+    currentHole: null,
+    attempts: 0,
+    holes: [],
+    ball: { x: 350, y: 350, vx: 0, vy: 0, r: 15, trapped: false },
+    tilt: { x: 0, y: 0, mouseDown: false },
+    deviceTilt: { x: 0, y: 0, active: false },
+    keys: {}
+  };
+  let audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  }
+
+  function playTone(midi, duration = 1.1) {
+    initAudio();
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    const now = audioCtx.currentTime;
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc1.type = "triangle";
+    osc2.type = "sine";
+    osc1.frequency.setValueAtTime(freq, now);
+    osc2.frequency.setValueAtTime(freq * 2, now);
+    const subGain = audioCtx.createGain();
+    subGain.gain.setValueAtTime(0.18, now);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.45, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0008, now + duration);
+    osc1.connect(gain);
+    osc2.connect(subGain);
+    subGain.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + duration);
+    osc2.stop(now + duration);
+  }
+
+  function buildHoles() {
+    state.holes = [];
+    const cx = 350, cy = 350;
+    const ringRadii = new Array(85, 145, 205, 265);
+    for (let s = 0; s < 12; s++) {
+      const angle = ((s - 3) * 30) * Math.PI / 180;
+      const noteObj = ROW_NOTES.at(s);
+      for (let o = 0; o < 4; o++) {
+        const r = ringRadii.at(o);
+        state.holes.push({
+          id: s * 4 + o,
+          sector: s,
+          octave: o,
+          name: noteObj.name + (o + 3),
+          midi: noteObj.midi + o * 12,
+          x: cx + Math.cos(angle) * r,
+          y: cy + Math.sin(angle) * r,
+          r: 13
+        });
+      }
+    }
+  }
+
+  function renderPlayerInputs() {
+    const count = parseInt(el("playerCount").value, 10);
+    const existing = Array.from(el("playerInputs").querySelectorAll("input"))
+      .map((inp) => inp.value);
+    el("playerInputs").innerHTML = "";
+    for (let i = 0; i < count; i++) {
+      const wrap = document.createElement("div");
+      const lbl = document.createElement("label");
+      lbl.textContent = "Spieler " + (i + 1);
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.placeholder = "Name " + (i + 1);
+      inp.value = existing.at(i) || "";
+      wrap.appendChild(lbl);
+      wrap.appendChild(inp);
+      el("playerInputs").appendChild(wrap);
+    }
+  }
+  el("playerCount").addEventListener("change", renderPlayerInputs);
+  renderPlayerInputs();
+
+  async function requestMotionPermission() {
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+      try {
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res === "granted") enableDeviceOrientation();
+      } catch (e) {}
+    } else {
+      enableDeviceOrientation();
+    }
+  }
+
+  function enableDeviceOrientation() {
+    window.addEventListener("deviceorientation", (e) => {
+      if (e.gamma === null || e.beta === null) return;
+      state.deviceTilt.active = true;
+      state.deviceTilt.x = Math.max(-35, Math.min(35, e.gamma)) / 35;
+      state.deviceTilt.y = Math.max(-35, Math.min(35, e.beta - 35)) / 35;
+    });
+  }
+ 
+  function updateMouseTilt(e) {
+    if (state.deviceTilt.active || !state.tilt.mouseDown) return;
+    const rect = canvas.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+    state.tilt.x = Math.max(-1, Math.min(1, nx));
+    state.tilt.y = Math.max(-1, Math.min(1, ny));
+  }
+  canvas.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    state.tilt.mouseDown = true;
+    updateMouseTilt(e);
+  });
+
+  window.addEventListener("mousemove", updateMouseTilt);
+  window.addEventListener("mouseup", () => {
+    state.tilt.mouseDown = false;
+    state.tilt.x = 0;
+    state.tilt.y = 0;
+  });
+
+  window.addEventListener("keydown", (e) => {
+    state.keys[e.key.toLowerCase()] = true;
+  });
+  window.addEventListener("keyup", (e) => {
+    state.keys[e.key.toLowerCase()] = false;
+  });
+
+  function bindSafeTap(btn, handler) {
+    let moved = false;
+    btn.addEventListener("touchstart", () => { moved = false; }, { passive: true });
+    btn.addEventListener("touchmove", () => { moved = true; }, { passive: true });
+    btn.addEventListener("click", (e) => {
+      if (moved) { e.preventDefault(); return; }
+      handler(e);
+    });
+  }
+
+  function updateScoreboard() {
+    const active = state.players.at(state.turnIdx);
+    const renderList = (targetId) => {
+      const box = el(targetId);
+      box.innerHTML = "";
+      state.players.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "score-item" + (active && p.id === active.id ? " active" : "");
+        div.innerHTML = "<span>" + p.name + "</span><strong>" + p.score + " Pkt</strong>";
+        box.appendChild(div);
+      });
+    };
+    renderList("liveScores");
+    renderList("finalScores");
+  }
+  function resetBallToCenter() {
+    state.ball.x = 350;
+    state.ball.y = 350;
+    state.ball.vx = 0;
+    state.ball.vy = 0;
+    state.ball.trapped = false;
+    state.currentHole = null;
+    el("buzzerBtn").disabled = true;
+    el("centerBtn").disabled = true;
+  }
+
+  function startTurn() {
+    const p = state.players.at(state.turnIdx);
+    state.phase = "listen";
+    state.attempts = 0;
+    const randIdx = Math.floor(Math.random() * state.holes.length);
+    state.targetHole = state.holes.at(randIdx);
+    resetBallToCenter();
+    el("turnLabel").textContent = (state.suddenDeath ? "⚡ STECHEN: " : "") + p.name;
+    el("roundLabel").textContent = state.suddenDeath
+      ? "Sudden Death"
+      : "Runde " + state.round + " / " + state.totalRounds;
+    el("attemptLabel").textContent = "Versuche: 0 / 12";
+    el("infoBanner").textContent = p.name + ": Höre den Zielton und drücke „Kugel freigeben“!";
+    el("playTargetBtn").disabled = false;
+    el("playTargetBtn").textContent = "🔊 Zielton anhören";
+    el("releaseBtn").disabled = false;
+
+    el("nextTurnBtn").classList.add("hidden");
+    updateScoreboard();
+    playTone(state.targetHole.midi, 1.3);
+  }
+
+  function startGame() {
+    initAudio();
+    requestMotionPermission();
+    buildHoles();
+    const inputs = Array.from(el("playerInputs").querySelectorAll("input"));
+    state.players = inputs.map((inp, idx) => ({
+      id: idx,
+      name: inp.value.trim() || ("Spieler " + (idx + 1)),
+      score: 0
+    }));
+    state.totalRounds = parseInt(el("roundCount").value, 10);
+    state.round = 1;
+    state.turnIdx = 0;
+    state.suddenDeath = false;
+    el("menuScreen").classList.add("hidden");
+    el("endScreen").classList.add("hidden");
+    el("gameScreen").classList.remove("hidden");
+    startTurn();
+  }
+  function finishTurn(points, msg) {
+    state.phase = "reveal";
+    const p = state.players.at(state.turnIdx);
+    p.score += points;
+    el("infoBanner").textContent = msg + " (Ziel war: " + state.targetHole.name + ")";
+    el("playTargetBtn").disabled = true;
+    el("releaseBtn").disabled = true;
+    el("centerBtn").disabled = true;
+    el("buzzerBtn").disabled = true;
+    el("nextTurnBtn").classList.remove("hidden");
+    updateScoreboard();
+  }
+
+  function advanceTurn() {
+    state.turnIdx++;
+    if (state.turnIdx >= state.players.length) {
+      state.turnIdx = 0;
+      if (!state.suddenDeath && state.round >= state.totalRounds) {
+        checkWinnerOrSuddenDeath();
+        return;
+      }
+      if (state.suddenDeath) {
+        checkWinnerOrSuddenDeath();
+        return;
+      }
+      state.round++;
+    }
+    startTurn();
+  }
+
+  function checkWinnerOrSuddenDeath() {
+    const minScore = Math.min(...state.players.map((p) => p.score));
+    const leaders = state.players.filter((p) => p.score === minScore);
+    if (leaders.length > 1) {
+      state.suddenDeath = true;
+      state.players = leaders;
+      state.turnIdx = 0;
+      startTurn();
+      return;
+    }
+    state.players.sort((a, b) => a.score - b.score);
+    updateScoreboard();
+    el("gameScreen").classList.add("hidden");
+    el("endScreen").classList.remove("hidden");
+  }
+   function getEffectiveTilt() {
+    let tx = state.deviceTilt.active ? state.deviceTilt.x : state.tilt.x;
+    let ty = state.deviceTilt.active ? state.deviceTilt.y : state.tilt.y;
+    if (state.keys.arrowleft || state.keys.a) tx -= 0.75;
+    if (state.keys.arrowright || state.keys.d) tx += 0.75;
+    if (state.keys.arrowup || state.keys.w) ty -= 0.75;
+    if (state.keys.arrowdown || state.keys.s) ty += 0.75;
+    return { x: Math.max(-1, Math.min(1, tx)), y: Math.max(-1, Math.min(1, ty)) };
+  }
+
+
+  function updatePhysics() {
+    if (state.phase !== "roll") return;
+    const t = getEffectiveTilt();
+    const b = state.ball;
+
+    if (b.trapped && state.currentHole) {
+      const mag = Math.hypot(t.x, t.y);
+      if (mag > 0.85) {
+        b.trapped = false;
+        b.vx = t.x * 4.4;
+        b.vy = t.y * 4.4;
+        b.x += t.x * 17;
+        b.y += t.y * 17;
+        state.currentHole = null;
+        el("buzzerBtn").disabled = true;
+        el("infoBanner").textContent = "Befreit! Suche weiter oder drücke „Zurück zur Mitte“.";
+      }
+      return;
+    }
+    b.vx = (b.vx + t.x * 0.25) * 0.975;
+    b.vy = (b.vy + t.y * 0.25) * 0.975;
+    b.x += b.vx;
+    b.y += b.vy;
+
+
+    const distCenter = Math.hypot(b.x - 350, b.y - 350);
+    if (distCenter > 346) {
+      playTone(36, 0.8);
+      finishTurn(12, "💥 Über den Rand gefallen! +12 Strafpunkte.");
+      return;
+    }
+    for (let i = 0; i < state.holes.length; i++) {
+      const h = state.holes.at(i);
+      const d = Math.hypot(b.x - h.x, b.y - h.y);
+      if (d < 16) {
+        b.x = h.x;
+        b.y = h.y;
+        b.vx = 0;
+        b.vy = 0;
+        b.trapped = true;
+        state.currentHole = h;
+        state.attempts++;
+        el("attemptLabel").textContent = "Versuche: " + state.attempts + " / 12";
+        playTone(h.midi, 1.1);
+        if (state.attempts >= 12 && h.id !== state.targetHole.id) {
+          finishTurn(12, "⏱ 12 Versuche aufgebraucht! +12 Punkte.");
+          return;
+        }
+        el("buzzerBtn").disabled = false;
+        el("centerBtn").disabled = false;
+        el("infoBanner").textContent = "Im Loch (" + h.name + ")! Buzzer drücken, stark kippen oder zur Mitte.";
+        break;
+      }
+    }
+  }  
+function drawBoard() {
+    ctx.clearRect(0, 0, 700, 700);
+    const cx = 350, cy = 350;
+    const ringEdges = new Array(115, 175, 235, 348);
+    for (let s = 0; s < 12; s++) {
+      const a0 = ((s - 3.5) * 30) * Math.PI / 180;
+      const a1 = ((s - 2.5) * 30) * Math.PI / 180;
+      const noteObj = ROW_NOTES.at(s);
+      for (let o = 3; o >= 0; o--) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, ringEdges.at(o), a0, a1);
+        ctx.closePath();
+        ctx.fillStyle = noteObj.colors.at(o);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.35)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+    state.holes.forEach((h) => {
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2);
+      const isRevealTarget = (state.phase === "reveal" && state.targetHole && h.id === state.targetHole.id);
+      ctx.fillStyle = isRevealTarget ? "#22c55e" : "rgba(15, 23, 42, 0.55)";
+      ctx.fill();
+      ctx.lineWidth = isRevealTarget ? 4 : 2;
+      ctx.strokeStyle = isRevealTarget ? "#ffffff" : "rgba(255,255,255,0.45)";
+      ctx.stroke();
+    });
+    ctx.font = "bold 18px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (let s = 0; s < 12; s++) {
+      const ang = ((s - 3) * 30) * Math.PI / 180;
+      const lx = cx + Math.cos(ang) * 320;
+      const ly = cy + Math.sin(ang) * 320;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.strokeText(ROW_NOTES.at(s).name, lx, ly);
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillText(ROW_NOTES.at(s).name, lx, ly);
+    }
+
+
+ 
+
+    const t = getEffectiveTilt();
+    ctx.beginPath();
+    ctx.arc(cx + t.x * 24, cy + t.y * 24, 6, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(251, 191, 36, 0.7)";
+    ctx.fill();
+
+    const b = state.ball;
+    const grad = ctx.createRadialGradient(b.x - 5, b.y - 5, 2, b.x, b.y, b.r);
+    grad.addColorStop(0, "#64748b");
+    grad.addColorStop(0.4, "#1e293b");
+    grad.addColorStop(1, "#020617");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#fbbf24";
+    ctx.stroke();
+ 
+  }
+    function loop() {
+    updatePhysics();
+    drawBoard();
+    requestAnimationFrame(loop);
+  }
+  bindSafeTap(el("startBtn"), startGame);
+  bindSafeTap(el("playTargetBtn"), () => {
+
+    if (!state.targetHole) return;
+    playTone(state.targetHole.midi, 1.3);
+    if (state.phase === "roll") {
+      const p = state.players.at(state.turnIdx);
+      p.score += 2;
+      updateScoreboard();
+      el("infoBanner").textContent = "🔊 Zielton erneut abgespielt (+2 Strafpunkte für " + p.name + ")!";
+    }
+  });
+
+
+bindSafeTap(el("releaseBtn"), () => {
+    state.phase = "roll";
+    el("releaseBtn").disabled = true;
+    el("playTargetBtn").disabled = false;
+    el("playTargetBtn").textContent = "🔊 Zielton (+2 Pkt)";
+    el("infoBanner").textContent = "Kippe das Gerät (oder ziehe mit gedrückter Maus), um das Loch zu finden!";
+  });
+  bindSafeTap(el("centerBtn"), () => {
+    if (state.phase !== "roll") return;
+    resetBallToCenter();
+    el("infoBanner").textContent = "Zurück in der Mitte! Suche weiter nach dem Zielton.";
+  });
+  bindSafeTap(el("buzzerBtn"), () => {
+    if (state.phase !== "roll" || !state.currentHole) return;
+    if (state.currentHole.id === state.targetHole.id) {
+      playTone(state.targetHole.midi + 12, 1.4);
+      finishTurn(state.attempts, "🎉 Volltreffer in " + state.attempts + " Versuch(en)!");
+    } else {
+      playTone(40, 0.7);
+      if (state.attempts >= 12) {
+        finishTurn(12, "❌ Falscher Ton & 12 Versuche voll! +12 Punkte.");
+      } else {
+        el("buzzerBtn").disabled = true;
+        el("infoBanner").textContent = "❌ Leider nicht (" + state.currentHole.name + ")! Rausruckeln oder zur Mitte.";
+      }
+    }
+  });
+  bindSafeTap(el("nextTurnBtn"), advanceTurn);
+  bindSafeTap(el("restartBtn"), () => {
+    el("endScreen").classList.add("hidden");
+    el("menuScreen").classList.remove("hidden");
+  });
+
+  buildHoles();
+  loop();
+})();
+</script>
+</body>
+</html>
